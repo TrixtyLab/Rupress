@@ -229,9 +229,24 @@ await suite.test('The build workflow covers the three platforms', () => {
   suite.assert(fs.existsSync(file), 'The build workflow is missing');
 
   const content = fs.readFileSync(file, 'utf8');
-  for (const os of ['ubuntu-latest', 'macos-latest', 'windows-latest']) {
-    suite.assert(content.includes(os), `The platform "${os}" is missing`);
+
+  const matrix = content.match(/os:\s*\[([^\]]*)\]/);
+  suite.assert(matrix, 'The matrix of platforms is missing');
+
+  const platforms = matrix[1]
+    .split(',')
+    .map((entry) => entry.trim().replace(/^['"]|['"]$/g, ''))
+    .filter(Boolean);
+
+  // The label of a platform can be pinned to a version (`macos-15`) or follow the
+  // latest image (`macos-latest`), so only the family of the runner is checked.
+  for (const family of ['ubuntu', 'macos', 'windows']) {
+    suite.assert(
+      platforms.some((platform) => platform.toLowerCase().startsWith(family)),
+      `The platform "${family}" is missing`
+    );
   }
+
   suite.assert(content.includes('pnpm/action-setup'), 'pnpm is not installed');
 });
 
