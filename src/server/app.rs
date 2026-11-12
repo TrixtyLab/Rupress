@@ -123,13 +123,6 @@ impl App {
         if let Some(tls) = options.tls {
             sec.tls.insecure = tls.insecure.unwrap_or(false);
             sec.tls.ca = tls.ca;
-
-            if sec.tls.insecure {
-                eprintln!(
-                    "[server] WARNING: the TLS verification of the proxy is disabled. \
-                     Never use this setting in production."
-                );
-            }
         }
 
         Ok(())

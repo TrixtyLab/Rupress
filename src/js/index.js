@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
-import { validateRequest } from './validation.js';
+import { validateRequest, collectFields } from './validation.js';
 import {
   HttpResponse,
   HttpError,
@@ -537,6 +537,16 @@ function extractValidation(definition) {
     return null;
   }
 
+  // The schemas are validated when the server starts, so a typo is reported
+  // instead of failing on the first request.
+  for (const [source, schema] of Object.entries(schemas)) {
+    try {
+      collectFields(schema);
+    } catch (error) {
+      throw new TypeError(`Invalid "${source}" schema: ${error.message}`);
+    }
+  }
+
   return { schemas, options: definition.validation };
 }
 
@@ -632,6 +642,13 @@ function translateSecurityOptions(security) {
   const rateLimit = security.rateLimit;
   const isRateLimitObject = rateLimit && typeof rateLimit === 'object';
 
+  if (security.tls && typeof security.tls === 'object' && security.tls.insecure === true) {
+    console.warn(
+      '[server] WARNING: the TLS verification of the proxy is disabled. ' +
+        'Never use this setting in production.'
+    );
+  }
+
   return {
     enableRateLimit: rateLimit !== false,
     rateLimitMax: isRateLimitObject ? rateLimit.max : undefined,
@@ -686,13 +703,21 @@ function translateAuthOptions(auth) {
   }
 
   const jwt = auth.jwt && typeof auth.jwt === 'object' ? auth.jwt : undefined;
+  const allowAnonymous = auth.allowAnonymous === true;
+
+  if (Object.keys(apiKeys).length === 0 && !jwt?.secret && !allowAnonymous) {
+    console.warn(
+      '[server] WARNING: the authentication layer is enabled but no credential is configured ' +
+        '(apiKeys or jwt). Every request will be answered with 401.'
+    );
+  }
 
   return {
     apiKeys: Object.keys(apiKeys).length > 0 ? apiKeys : undefined,
     jwtSecret: jwt?.secret,
     jwtIssuer: jwt?.issuer,
     jwtAudience: jwt?.audience,
-    allowAnonymous: auth.allowAnonymous === true
+    allowAnonymous
   };
 }
 

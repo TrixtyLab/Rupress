@@ -132,17 +132,15 @@ impl MethodRouter {
     pub fn match_route(&self, method: &str, path: &str) -> RouteMatch {
         let method_upper = method.to_uppercase();
 
-        if let Some(router) = self.routers.get(&method_upper) {
-            if let Ok(matched) = router.at(path) {
-                let params = matched
-                    .params
-                    .iter()
-                    // Parameters are percent-decoded so handlers always receive the
-                    // real value sent by the client.
-                    .map(|(k, v)| (k.to_string(), decode_path(v)))
-                    .collect();
-                let (handler, auth) = matched.value;
-                return RouteMatch::Found(handler.clone(), params, auth.clone());
+        if let Some(matched) = self.find_route(&method_upper, path) {
+            return matched;
+        }
+
+        // A HEAD request is answered by the GET route, as the RFC recommends and
+        // as the usual frameworks do: the same headers, without the body.
+        if method_upper == "HEAD" {
+            if let Some(matched) = self.find_route("GET", path) {
+                return matched;
             }
         }
 
@@ -157,6 +155,25 @@ impl MethodRouter {
         }
 
         RouteMatch::NotFound
+    }
+
+    /**
+     * Looks for a route of a method.
+     */
+    fn find_route(&self, method: &str, path: &str) -> Option<RouteMatch> {
+        let router = self.routers.get(method)?;
+        let matched = router.at(path).ok()?;
+
+        let params = matched
+            .params
+            .iter()
+            // Parameters are percent-decoded so handlers always receive the
+            // real value sent by the client.
+            .map(|(k, v)| (k.to_string(), decode_path(v)))
+            .collect();
+        let (handler, auth) = matched.value;
+
+        Some(RouteMatch::Found(handler.clone(), params, auth.clone()))
     }
 
     /**

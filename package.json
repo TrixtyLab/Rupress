@@ -59,7 +59,16 @@
     "build:release": "node ./scripts/build.js --release",
     "prepack": "node ./scripts/build.js --release",
     "dev": "node ./test/index.js",
-    "test": "node ./test/http_statuses.test.js && node ./test/regressions.test.js && node ./test/frontend.test.js && node ./test/security.test.js"
+    "test": "node ./test/run.js",
+    "test:http": "node ./test/http_statuses.test.js",
+    "test:api": "node ./test/api.test.js",
+    "test:config": "node ./test/config.test.js",
+    "test:protocol": "node ./test/protocol.test.js",
+    "test:auth": "node ./test/auth.test.js",
+    "test:validation": "node ./test/validation.test.js",
+    "test:regressions": "node ./test/regressions.test.js",
+    "test:frontend": "node ./test/frontend.test.js",
+    "test:security": "node ./test/security.test.js"
   },
   "engines": {
     "node": ">=18"

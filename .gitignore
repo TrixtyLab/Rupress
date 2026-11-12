@@ -3,4 +3,3 @@ node_modules
 /dist
 /test/fixtures
 .npmrc
-pnpm-lock.yaml

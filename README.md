@@ -74,7 +74,8 @@ It requires **Node.js 18+**. A Rust toolchain is only needed to build from sourc
 | `pnpm build` | Compiles the native addon (debug profile) and generates `dist/`. |
 | `pnpm build:release` | Compiles the native addon (release profile) and generates `dist/`. |
 | `pnpm dev` | Starts the example server. |
-| `pnpm test` | Runs the whole test suite. |
+| `pnpm test` | Runs the whole test suite (9 suites, 375 tests). |
+| `pnpm test:<suite>` | Runs a single suite (`api`, `config`, `protocol`, `auth`, `validation`…). |
 
 ---
 

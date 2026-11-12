@@ -76,7 +76,7 @@ await serve(3000, {
 
 ## The three ways to declare a route
 
-### 1. Verb and path
+### Verb and path
 
 ```js
 await serve(3000, {
@@ -85,7 +85,7 @@ await serve(3000, {
 });
 ```
 
-### 2. One object per path (several verbs)
+### One object per path (several verbs)
 
 ```js
 await serve(3000, {
@@ -97,7 +97,7 @@ await serve(3000, {
 });
 ```
 
-### 3. One object per path with a field schema
+### One object per path with a field schema
 
 ```js
 await serve(3000, {

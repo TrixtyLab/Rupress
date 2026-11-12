@@ -94,13 +94,13 @@ with the upstream, and the hop-by-hop headers (`Connection`, `Transfer-Encoding`
 
 ### The resolution order
 
-```
-1. Application routes     ->  your handlers
-2. Static files           ->  the build folder
-3. Proxy                  ->  the Vite dev server
-4. SPA fallback           ->  the index.html
-5. 404
-```
+| Order | Source | Answered by |
+| --- | --- | --- |
+| First | Application routes | your handlers |
+| Second | Static files | the build folder |
+| Third | Proxy | the Vite dev server |
+| Fourth | SPA fallback | the index.html |
+| Last | Nothing | 404 |
 
 The API routes always win, so the proxy never interferes with the backend.
 

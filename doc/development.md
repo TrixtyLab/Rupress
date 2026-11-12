@@ -57,18 +57,31 @@ Windows**, and uploads the artifacts of each platform.
 ## The test suite
 
 ```bash
-pnpm test
+pnpm test                 # every suite
+pnpm test:protocol        # one suite
+```
+
+The runner (`test/run.js`) executes every suite and summarizes the result:
+
+```
+Suites: 9/9 passed
+Tests:  375 passed, 0 failed
 ```
 
 | File | Covers |
 | --- | --- |
+| `test/api.test.js` | The public exports, the hierarchy of the status classes, the metadata of the package, the build output, the type declarations and the workflows. |
+| `test/config.test.js` | The detection of the misconfigurations: invalid ports, invalid routes, duplicated routes, missing directories, invalid schemas, invalid upstreams and the warnings of the configuration. |
+| `test/protocol.test.js` | The HTTP protocol: the methods, CORS, the bodies, the chunked encoding, `100-continue`, the MIME types, the malformed requests and the limits of the connection. |
+| `test/auth.test.js` | The complete matrix of the authentication: API keys, JWT (including the `alg: none` attack, the tampered payload and the expired tokens), the permissions of the routes and the anonymous access. |
+| `test/validation.test.js` | The complete matrix of the declarative validation: every type, the required fields, the defaults, the constraints, the nested schemas, the custom messages and the delegated statuses. |
 | `test/http_statuses.test.js` | The five HTTP categories, the registry, the helpers and the routing with parameters. |
-| `test/regressions.test.js` | Query and parameter decoding, static files and traversal blocking, header normalization, invalid status, `304` without `Location`, ephemeral port, rate limit, startup validations and the declarative validation. |
-| `test/frontend.test.js` | SPA fallback, cache policy, proxy to a dev server and the WebSocket tunnel. |
-| `test/security.test.js` | API keys, route permissions, the rate limit per key and the HTTPS proxy. |
+| `test/regressions.test.js` | The regressions: the decoding of the query and the parameters, the static files and the traversal blocking, the normalization of the headers, the invalid status, the ephemeral port, the rate limit and the startup validations. |
+| `test/frontend.test.js` | The SPA fallback, the cache policy, the proxy to a dev server and the WebSocket tunnel. |
+| `test/security.test.js` | The API keys, the route permissions, the rate limit per key and the HTTPS proxy. |
 
-The tests start real servers on ephemeral ports and use `fetch` and `node:http` as clients, so
-they verify the observable behaviour and not the internal implementation.
+Every suite starts real servers on **ephemeral ports** and uses `fetch` and `node:http` as
+clients, so they verify the observable behaviour and not the internal implementation.
 
 The TLS tests need `openssl` to generate a certificate authority; set `OPENSSL_PATH` to point
 to the binary. When it is not available those tests are skipped:
@@ -94,9 +107,9 @@ OPENSSL_PATH=/usr/bin/openssl pnpm test
 
 ### The workflow
 
-1. Edit the code in `src/js/` or `src/server/`.
-2. `pnpm build` to recompile the native addon (only when you touched Rust).
-3. `pnpm test` to verify.
+- Edit the code in `src/js/` or `src/server/`.
+- Run `pnpm build` to recompile the native addon (only when you touched Rust).
+- Run `pnpm test` to verify.
 
 > `dist/` is **not** versioned: it is always regenerated with `pnpm build`. If you edit
 > JavaScript and want to try it without recompiling, you can import it directly from `src/js/`.
@@ -182,11 +195,11 @@ will not see them. Use `2>&1` or look at the error channel of the process.
 
 ## Contributing
 
-1. Open an issue describing the expected and the current behaviour.
-2. Create a branch.
-3. Add or adjust the test that covers the change.
-4. Run `pnpm test` and `cargo clippy`.
-5. Update the documentation in `/doc` when the public API changes.
+- Open an issue describing the expected and the current behaviour.
+- Create a branch.
+- Add or adjust the test that covers the change.
+- Run `pnpm test` and `cargo clippy`.
+- Update the documentation in `/doc` when the public API changes.
 
 ---
 

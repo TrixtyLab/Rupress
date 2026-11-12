@@ -52,24 +52,20 @@ JavaScript takes care of the logic of the application.
 
 ## The flow of a request
 
-1. **Connection**: Tokio accepts the socket and a wrapper (`InterimIo`) is created, able to
-   write the 1xx responses before the final one.
-2. **Rate limit**: the quota of the client is checked (by IP or by credential). When it is
-   exceeded, the answer is `429` with `Retry-After`.
-3. **Authentication**: the credential is verified in constant time. When it fails, the answer
-   is `401`.
-4. **CORS**: when it is enabled and the method is `OPTIONS`, the preflight is answered.
-5. **Upgrade**: when the request asks for a protocol upgrade and a proxy route handles it, the
-   handshake is completed with the upstream and the connection is tunnelled.
-6. **Body**: it is read with the size limit; when it is exceeded, the answer is `413`.
-7. **Routes**: the match is looked up. When there is one, the request is dispatched to the
-   JavaScript handler through a *threadsafe function*.
-8. **Permissions**: the identity must have the permissions the route requires, otherwise the
-   answer is `403`.
-9. **Static files**: when there was no match, a static file is looked up.
-10. **Proxy**: when there was no match and there is a proxy route, the request is delegated.
-11. **SPA**: when there was no match and there is an entry point, it is served.
-12. **404**: when nothing matches, the standard JSON envelope is answered.
+| Step | What happens |
+| --- | --- |
+| **Connection** | Tokio accepts the socket and a wrapper (`InterimIo`) is created, able to write the 1xx responses before the final one. |
+| **Rate limit** | The quota of the client is checked (by IP or by credential). When it is exceeded, the answer is `429` with `Retry-After`. |
+| **Authentication** | The credential is verified in constant time. When it fails, the answer is `401`. |
+| **CORS** | When it is enabled and the method is `OPTIONS`, the preflight is answered. |
+| **Upgrade** | When the request asks for a protocol upgrade and a proxy route handles it, the handshake is completed with the upstream and the connection is tunnelled. |
+| **Body** | It is read with the size limit; when it is exceeded, the answer is `413`. |
+| **Routes** | The match is looked up. When there is one, the request is dispatched to the JavaScript handler through a *threadsafe function*. |
+| **Permissions** | The identity must have the permissions the route requires, otherwise the answer is `403`. |
+| **Static files** | When there was no match, a static file is looked up. |
+| **Proxy** | When there was no match and there is a proxy route, the request is delegated. |
+| **SPA** | When there was no match and there is an entry point, it is served. |
+| **404** | When nothing matches, the standard JSON envelope is answered. |
 
 ---
 
@@ -96,9 +92,9 @@ To support it, rupress solves it in two parts:
 The credentials are verified in Rust, so the request does not have to travel to JavaScript to
 be authorized:
 
-1. The API key is looked up with a **constant time** comparison.
-2. The JWT is verified (signature, `exp`, `nbf`, `iss`, `aud`) with HMAC-SHA256.
-3. The identity is attached to the request (`ctx.user`).
+- The API key is looked up with a **constant time** comparison.
+- The JWT is verified (signature, `exp`, `nbf`, `iss`, `aud`) with HMAC-SHA256.
+- The identity is attached to the request (`ctx.user`).
 
 The permissions of the route travel with the handler registration, so the check is a simple
 comparison when the route is resolved.
@@ -117,14 +113,11 @@ src/server/  ─┘         │
                         └─► cargo build (debug | release [--target <triple>])
 ```
 
-`scripts/build.js`:
-
-1. Compiles the Rust crate with cargo (optionally for another target triple).
-2. Copies the library into `dist/index.node`, resolving the name of the platform
-   (`server.dll`, `libserver.so`, `libserver.dylib`).
-3. Copies `src/js/*.js` and `src/js/*.d.ts` into `dist/`.
-4. Cleans the leftovers of previous builds (`*.old`).
-5. **Verifies** that the output is complete; when something is missing the build fails.
+`scripts/build.js` compiles the Rust crate with cargo (optionally for another target triple),
+copies the library into `dist/index.node` resolving the name of the platform
+(`server.dll`, `libserver.so`, `libserver.dylib`), copies `src/js/*.js` and `src/js/*.d.ts` into
+`dist/`, cleans the leftovers of previous builds (`*.old`) and **verifies** that the output is
+complete: when something is missing the build fails.
 
 The `prepack` and `prepublishOnly` hooks run the release build, so the published package
 **always** includes the native addon, the JavaScript layer and the types.
