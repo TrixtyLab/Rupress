@@ -3,7 +3,6 @@ name: Build
 on:
   push:
     branches: [main, master]
-    tags: ["v*"]
   pull_request:
     branches: [main, master]
   workflow_dispatch:
@@ -13,12 +12,18 @@ permissions:
 
 jobs:
   build:
-    name: ${{ matrix.os }}
+    name: Build (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-15, windows-latest]
+        include:
+          - name: Windows x64
+            os: windows-latest
+          - name: Linux x64
+            os: ubuntu-latest
+          - name: macOS arm64 + x64
+            os: macos-15
 
     steps:
       - name: Checkout
@@ -44,18 +49,29 @@ jobs:
       - name: Build (release)
         run: pnpm build:release
 
+      # One macOS runner builds both architectures: rustc can cross-compile
+      # between Apple Silicon and Intel with the same Xcode toolchain.
+      - name: Build the other macOS architecture
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          target="x86_64-apple-darwin"
+          if [ "${{ runner.arch }}" != "ARM64" ]; then
+            target="aarch64-apple-darwin"
+          fi
+          rustup target add "$target"
+          node ./scripts/build.js --release --target "$target"
+
       - name: Test
         run: pnpm test
         env:
           OPENSSL_PATH: /usr/bin/openssl
 
-      - name: Upload the artifact
+      - name: Upload the native binaries
         uses: actions/upload-artifact@v4
         with:
-          name: rupress-${{ matrix.os }}
-          path: |
-            dist/*
-            index.js
+          name: rupress-${{ runner.os }}
+          path: dist/*.node
           if-no-files-found: error
 
   package:
@@ -81,11 +97,31 @@ jobs:
       - name: Install the dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      # The binaries of the three platforms are merged into a single dist/
+      # before the JavaScript layer is generated.
+      - name: Download the native binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: rupress-*
+          path: dist
+          merge-multiple: true
 
-      - name: Build the package
-        run: pnpm build:release
+      - name: Assemble the package
+        run: pnpm build:js
 
+      - name: Test the packaged layout
+        run: pnpm test
+        env:
+          OPENSSL_PATH: /usr/bin/openssl
+
+      # `prepack` verifies that win.node, lin.node, mac.node and mac-x64.node
+      # are all present, so an incomplete package can never be created.
       - name: Create the tarball
         run: pnpm pack --pack-destination ./release
+
+      - name: Upload the tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: rupress-package
+          path: release/*.tgz
+          if-no-files-found: error

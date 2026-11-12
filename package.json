@@ -1,6 +1,6 @@
 {
   "name": "@trixtylab/rupress",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "HTTP server written in Rust (Tokio + Hyper) with a declarative API, the complete HTTP status system and first class support for React and Vite",
   "keywords": [
     "rupress",
@@ -57,7 +57,8 @@
   "scripts": {
     "build": "node ./scripts/build.js",
     "build:release": "node ./scripts/build.js --release",
-    "prepack": "node ./scripts/build.js --release",
+    "build:js": "node ./scripts/build.js --js-only",
+    "prepack": "node ./scripts/build.js --js-only --require-all",
     "dev": "node ./test/index.js",
     "test": "node ./test/run.js",
     "test:http": "node ./test/http_statuses.test.js",

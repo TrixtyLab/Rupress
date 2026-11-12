@@ -180,7 +180,30 @@ await suite.test('The license matches the file of the project', () => {
 
 suite.section('The build output');
 
-const REQUIRED = ['index.node', 'index.js', 'http.js', 'errors.js', 'validation.js', 'index.d.ts'];
+const BINDING_PREFIX = { win32: 'win', linux: 'lin', darwin: 'mac' };
+const PRIMARY_ARCH = { win32: 'x64', linux: 'x64', darwin: 'arm64' };
+
+/**
+ * The platform-specific binding the loader resolves at runtime.
+ */
+function nativeBindingName() {
+  const prefix = BINDING_PREFIX[process.platform];
+
+  if (!prefix) return 'index.node';
+
+  return process.arch === PRIMARY_ARCH[process.platform]
+    ? `${prefix}.node`
+    : `${prefix}-${process.arch}.node`;
+}
+
+const REQUIRED = [
+  nativeBindingName(),
+  'index.js',
+  'http.js',
+  'errors.js',
+  'validation.js',
+  'index.d.ts'
+];
 
 for (const file of REQUIRED) {
   await suite.test(`The file "${file}" is generated`, () => {
@@ -230,19 +253,17 @@ await suite.test('The build workflow covers the three platforms', () => {
 
   const content = fs.readFileSync(file, 'utf8');
 
-  const matrix = content.match(/os:\s*\[([^\]]*)\]/);
-  suite.assert(matrix, 'The matrix of platforms is missing');
+  suite.assert(content.includes('matrix:'), 'The matrix of platforms is missing');
 
-  const platforms = matrix[1]
-    .split(',')
-    .map((entry) => entry.trim().replace(/^['"]|['"]$/g, ''))
-    .filter(Boolean);
+  const runners = [...content.matchAll(/os:\s*([^\s#]+)/g)].map((match) =>
+    match[1].replace(/^['"]|['"]$/g, '').toLowerCase()
+  );
 
   // The label of a platform can be pinned to a version (`macos-15`) or follow the
   // latest image (`macos-latest`), so only the family of the runner is checked.
   for (const family of ['ubuntu', 'macos', 'windows']) {
     suite.assert(
-      platforms.some((platform) => platform.toLowerCase().startsWith(family)),
+      runners.some((runner) => runner.startsWith(family)),
       `The platform "${family}" is missing`
     );
   }

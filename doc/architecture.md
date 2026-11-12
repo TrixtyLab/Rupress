@@ -108,19 +108,24 @@ The project has **two sources of truth** separated: the Rust code and the JavaSc
 
 ```
 src/js/*.js  ─┐
-              ├─► scripts/build.js ─► dist/*.js  +  dist/index.node  +  dist/index.d.ts
+              ├─► scripts/build.js ─► dist/*.js  +  dist/{win,lin,mac}.node  +  dist/index.d.ts
 src/server/  ─┘         │
                         └─► cargo build (debug | release [--target <triple>])
 ```
 
 `scripts/build.js` compiles the Rust crate with cargo (optionally for another target triple),
-copies the library into `dist/index.node` resolving the name of the platform
-(`server.dll`, `libserver.so`, `libserver.dylib`), copies `src/js/*.js` and `src/js/*.d.ts` into
-`dist/`, cleans the leftovers of previous builds (`*.old`) and **verifies** that the output is
-complete: when something is missing the build fails.
+copies the library into a platform-specific binding (`win.node`, `lin.node`, `mac.node`,
+`mac-x64.node`, ...) resolving the name of the platform (`server.dll`, `libserver.so`,
+`libserver.dylib`), copies `src/js/*.js` and `src/js/*.d.ts` into `dist/`, cleans the leftovers
+of previous builds (`*.old` and the old monolithic `index.node`) and **verifies** that the
+output is complete: when something is missing the build fails.
 
-The `prepack` and `prepublishOnly` hooks run the release build, so the published package
-**always** includes the native addon, the JavaScript layer and the types.
+The loader in `src/js/index.js` selects the binding that matches `process.platform` and
+`process.arch`, so one published tarball contains the binaries of every platform without ever
+trying to load a foreign one.
+
+The `prepack` hook runs `build:js --require-all`, so the published package **always** includes
+the native binaries of Windows, Linux and macOS, the JavaScript layer and the types.
 
 > **Why the code does not live in `dist/`**: `dist/` is the output folder. If the code were
 > there, any build that regenerated it would take the whole implementation with it. With the

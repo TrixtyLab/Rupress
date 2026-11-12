@@ -207,7 +207,10 @@ async function assertInterimCase(name, path, expectedInterimStatus, expectedFina
  * Asserts that the build output contains every artifact required at runtime.
  */
 function assertBuildOutput() {
-  const required = ['index.node', 'index.js', 'http.js', 'errors.js', 'index.d.ts'];
+  const prefix = { win32: 'win', linux: 'lin', darwin: 'mac' }[process.platform];
+  const primaryArch = { win32: 'x64', linux: 'x64', darwin: 'arm64' }[process.platform];
+  const binding = process.arch === primaryArch ? `${prefix}.node` : `${prefix}-${process.arch}.node`;
+  const required = [binding, 'index.js', 'http.js', 'errors.js', 'index.d.ts'];
 
   for (const file of required) {
     try {

@@ -94,29 +94,88 @@ export { validateBody, validateRequest, collectFields, isFieldDescriptor } from 
 const require = createRequire(import.meta.url);
 
 /**
+ * The prefix of the native binding of every supported platform.
+ *
+ * A single published package ships one binary per platform (`win.node`,
+ * `lin.node`, `mac.node`, ...) and the loader below picks the one that matches
+ * the runtime, so installing the package on Windows never tries to load the
+ * Linux or macOS build.
+ */
+const BINDING_PREFIX = {
+  win32: 'win',
+  linux: 'lin',
+  darwin: 'mac'
+};
+
+/**
+ * The architecture covered by the unprefixed binding of every platform.
+ *
+ * The build script publishes `mac.node` for Apple Silicon and `mac-x64.node`
+ * for Intel (and, symmetrically, `win-arm64.node` / `lin-arm64.node` when those
+ * builds are available). The unprefixed name is the fallback for the main
+ * architecture of the platform.
+ */
+const PRIMARY_ARCH = {
+  win32: 'x64',
+  linux: 'x64',
+  darwin: 'arm64'
+};
+
+/**
+ * The names of the native bindings to try, from the most specific one to the
+ * fallback of the platform.
+ */
+function bindingNames() {
+  const prefix = BINDING_PREFIX[process.platform];
+
+  if (!prefix) {
+    return [];
+  }
+
+  const specific = `${prefix}-${process.arch}.node`;
+  const primary = `${prefix}.node`;
+
+  return process.arch === PRIMARY_ARCH[process.platform] ? [primary] : [specific, primary];
+}
+
+/**
  * Resolves the compiled native addon.
  *
  * The JavaScript sources live in `src/js` and are copied into `dist` by the build
- * script, therefore the addon may live either next to this file (`dist/index.node`)
- * or inside the build output directory (`dist/index.node` relative to `src/js`).
+ * script, therefore the addon may live either next to this file (when it runs from
+ * `dist`) or inside the build output directory (when the sources run directly).
  */
 function loadAddon() {
-  const candidates = ['./index.node', '../../dist/index.node', '../dist/index.node'];
+  const names = bindingNames();
 
-  for (const candidate of candidates) {
-    try {
-      return require(candidate);
-    } catch (err) {
-      // Only a missing file is retried with the next candidate: any other failure
-      // (incompatible ABI, corrupted binary, ...) must surface to the caller.
-      if (err?.code !== 'MODULE_NOT_FOUND') {
-        throw err;
+  if (names.length === 0) {
+    throw new Error(
+      `Rupress does not ship a native addon for ${process.platform}-${process.arch}.`
+    );
+  }
+
+  for (const name of names) {
+    for (const candidate of [`./${name}`, `../../dist/${name}`, `../dist/${name}`]) {
+      try {
+        return require(candidate);
+      } catch (err) {
+        // Only a missing file is retried with the next candidate: any other failure
+        // (incompatible ABI, corrupted binary, ...) must surface to the caller.
+        if (err?.code !== 'MODULE_NOT_FOUND') {
+          throw new Error(
+            `The native addon "${name}" could not be loaded on ` +
+              `${process.platform}-${process.arch}: ${err.message}`,
+            { cause: err }
+          );
+        }
       }
     }
   }
 
   throw new Error(
-    'Native addon not found. Run "pnpm build" (or "pnpm build:release") to compile it.'
+    `Native addon not found for ${process.platform}-${process.arch}. ` +
+      `Expected "${names[0]}" next to the JavaScript layer. ` +
+      'Run "pnpm build" (or "pnpm build:release") to compile it.'
   );
 }
 

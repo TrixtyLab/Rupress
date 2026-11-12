@@ -61,6 +61,10 @@ pnpm add @trixtylab/rupress
 
 It requires **Node.js 18+**. A Rust toolchain is only needed to build from source.
 
+The package ships a native binding for every supported platform (`win.node`, `lin.node`,
+`mac.node` and `mac-x64.node` for Intel macOS). The JavaScript entry point detects the runtime
+and loads the matching file, so the same package works on Windows, Linux and macOS.
+
 > GitHub Packages only accepts **scoped** packages, and the scope must match the owner of the
 > repository (`@trixtylab`), so the package is published as `@trixtylab/rupress`. The package is
 > public, so it can be installed with a token that only has the `read:packages` permission.
@@ -73,6 +77,7 @@ It requires **Node.js 18+**. A Rust toolchain is only needed to build from sourc
 | --- | --- |
 | `pnpm build` | Compiles the native addon (debug profile) and generates `dist/`. |
 | `pnpm build:release` | Compiles the native addon (release profile) and generates `dist/`. |
+| `pnpm build:js` | Copies the JavaScript layer into `dist` without compiling (used to assemble the multi-platform package). |
 | `pnpm dev` | Starts the example server. |
 | `pnpm test` | Runs the whole test suite (9 suites, 375 tests). |
 | `pnpm test:<suite>` | Runs a single suite (`api`, `config`, `protocol`, `auth`, `validation`…). |

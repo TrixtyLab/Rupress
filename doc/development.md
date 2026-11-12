@@ -10,6 +10,7 @@
 rustup target add x86_64-pc-windows-msvc   # Windows
 rustup target add x86_64-unknown-linux-gnu # Linux
 rustup target add aarch64-apple-darwin      # macOS (Apple Silicon)
+rustup target add x86_64-apple-darwin       # macOS (Intel)
 ```
 
 ---
@@ -34,6 +35,7 @@ and RPC.
 | --- | --- |
 | `pnpm build` | Compiles the native addon (debug profile) and generates `dist/`. |
 | `pnpm build:release` | Compiles the native addon (release profile) and generates `dist/`. |
+| `pnpm build:js` | Copies the JavaScript layer into `dist` without compiling. |
 | `pnpm dev` | Starts the example server. |
 | `pnpm test` | Runs the whole test suite. |
 
@@ -44,13 +46,30 @@ The build script accepts a target triple:
 ```bash
 node ./scripts/build.js --release --target x86_64-unknown-linux-gnu
 node ./scripts/build.js --release --target aarch64-apple-darwin
+node ./scripts/build.js --release --target x86_64-apple-darwin
 ```
 
 The name of the library is resolved from the target (`server.dll`, `libserver.so`,
-`libserver.dylib`) and the result is always copied to `dist/index.node`.
+`libserver.dylib`) and the result is copied to a platform-specific binding:
+
+| Platform | Architecture | Output |
+| --- | --- | --- |
+| Windows | x64 | `dist/win.node` |
+| Windows | arm64 | `dist/win-arm64.node` |
+| Linux | x64 | `dist/lin.node` |
+| Linux | arm64 | `dist/lin-arm64.node` |
+| macOS | arm64 | `dist/mac.node` |
+| macOS | x64 | `dist/mac-x64.node` |
+
+The JavaScript loader (`src/js/index.js`) resolves the file that matches
+`process.platform` and `process.arch` at runtime, so a single package can contain every
+platform. `pnpm build:js` copies only the JavaScript layer, and
+`pnpm build:js --require-all` (the `prepack` hook) also verifies that `win.node`, `lin.node`,
+`mac.node` and `mac-x64.node` are all present.
 
 The `.github/workflows/build.yml` workflow compiles and tests the project on **Linux, macOS and
-Windows**, and uploads the artifacts of each platform.
+Windows**, builds both macOS architectures on the same runner and merges the binaries of every
+platform into a single package.
 
 ---
 
@@ -146,22 +165,25 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The workflow builds the addon in release mode, runs the tests and publishes the package with a
-provenance attestation. The registry, the scope and the permissions are declared in
-`package.json` (`publishConfig`) and in the workflow.
+The workflow builds the addon on Windows, Linux and macOS (both macOS architectures), merges the
+binaries into a single `dist/`, runs the tests and publishes the package with a provenance
+attestation. The registry, the scope and the permissions are declared in `package.json`
+(`publishConfig`) and in the workflow.
 
 > GitHub Packages only accepts scoped packages, so the name of the package is
 > `@trixtylab/rupress` and the scope must match the owner of the repository.
 
-To publish a tarball locally:
+To publish a tarball locally, all the platform binaries must be present in `dist/`:
 
 ```bash
-pnpm build:release
+pnpm build:release                                          # current platform
+pnpm build:js --require-all                                 # assemble + verify
 pnpm pack --pack-destination ./release
 ```
 
-The `prepack` hook runs the release build, so the package always includes the native addon,
-the JavaScript layer, the types and the documentation.
+The `prepack` hook runs the JavaScript assembly and fails when `win.node`, `lin.node`,
+`mac.node` or `mac-x64.node` is missing, so an incomplete package cannot be published by
+accident.
 
 To publish somewhere else (npmjs, for instance) the registry can be overridden:
 
@@ -176,10 +198,12 @@ pnpm publish --registry https://registry.npmjs.org --access public
 ### The native addon does not load
 
 ```
-Native addon not found. Run "pnpm build" (or "pnpm build:release") to compile it.
+Native addon not found for win32-x64. Expected "win.node" next to the JavaScript layer.
+Run "pnpm build" (or "pnpm build:release") to compile it.
 ```
 
-Build the project: `pnpm build`.
+Build the project: `pnpm build`. The generated name depends on the platform: `win.node` on
+Windows, `lin.node` on Linux and `mac.node` (or `mac-x64.node` on Intel) on macOS.
 
 ### `EBUSY` while recompiling
 

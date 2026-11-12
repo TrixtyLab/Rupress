@@ -4,21 +4,26 @@ import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 
 /**
- * Build pipeline for the server package.
+ * Build pipeline for the rupress package.
  *
- * The Rust addon and the JavaScript layer are two halves of the same artifact, so
- * both are (re)generated on every build:
+ * The Rust addon and the JavaScript layer are two halves of the same artifact:
  *
  *   1. `cargo build` compiles the native module (debug or release profile).
- *   2. The compiled library is copied into `dist/index.node`.
+ *   2. The compiled library is copied into a platform-specific file:
+ *      `win.node`, `lin.node`, `mac.node`, `mac-x64.node`, ...
  *   3. The JavaScript sources living in `src/js` are copied into `dist`.
  *
- * Because of step 3, `dist` is always a complete and reproducible package: running
- * `pnpm build:release` on a clean checkout produces exactly the same output as the
- * development build, and nothing that lives in `src` can be lost.
+ * The bindings are platform specific because one published package carries all
+ * of them: `src/js/index.js` selects the right file at runtime. This is what
+ * keeps a Windows install from loading the Linux or the macOS binary.
+ *
+ * `--js-only` assembles the JavaScript layer without compiling. The publish
+ * workflows use it after downloading the binaries produced by every platform,
+ * and `--require-all` turns the assembly into the final packaging check.
  *
  * Usage:
  *   node ./scripts/build.js [--release] [--target <triple>]
+ *   node ./scripts/build.js --js-only [--require-all]
  */
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -28,15 +33,50 @@ const jsSourceDir = path.join(projectRoot, 'src', 'js');
 
 const isRelease = process.argv.includes('--release');
 const profile = isRelease ? 'release' : 'debug';
+const isJsOnly =
+  process.argv.includes('--js-only') ||
+  process.argv.includes('--skip-native') ||
+  process.env.SKIP_NATIVE_BUILD === '1' ||
+  process.env.SKIP_NATIVE_BUILD === 'true';
+const requireAllPlatforms = process.argv.includes('--require-all');
 
 /**
- * The name of the library produced by cargo on every platform.
+ * The prefix of the binding of every platform, as understood by the loader.
+ */
+const BINDING_PREFIX = {
+  win32: 'win',
+  linux: 'lin',
+  darwin: 'mac'
+};
+
+/**
+ * The architecture that uses the unprefixed binding (`win.node`, ...).
+ */
+const PRIMARY_ARCH = {
+  win32: 'x64',
+  linux: 'x64',
+  darwin: 'arm64'
+};
+
+/**
+ * The name of the dynamic library produced by cargo on every platform.
  */
 const LIBRARY_NAMES = {
   win32: 'server.dll',
   linux: 'libserver.so',
   darwin: 'libserver.dylib'
 };
+
+/**
+ * The bindings a publishable package must contain. Intel macOS is an extra
+ * binary built from the same macOS runner.
+ */
+const REQUIRED_PLATFORM_BINDINGS = ['win.node', 'lin.node', 'mac.node', 'mac-x64.node'];
+
+/**
+ * The files of the JavaScript layer generated on every build.
+ */
+const REQUIRED_JS_FILES = ['index.js', 'http.js', 'errors.js', 'validation.js', 'index.d.ts'];
 
 /**
  * The target triple requested for the compilation, when it is not the host one.
@@ -49,7 +89,7 @@ function requestedTarget() {
   }
 
   const index = process.argv.indexOf('--target');
-  if (index !== -1 && process.argv[index + 1]) {
+  if (index !== -1 && process.argv[index + 1] && !process.argv[index + 1].startsWith('--')) {
     return process.argv[index + 1];
   }
 
@@ -64,22 +104,53 @@ function platformOf(target) {
     return process.platform;
   }
 
-  if (target.startsWith('windows')) return 'win32';
-  if (target.startsWith('linux')) return 'linux';
-  if (target.startsWith('darwin')) return 'darwin';
+  if (target.includes('windows')) return 'win32';
+  if (target.includes('linux')) return 'linux';
+  if (target.includes('darwin') || target.includes('apple')) return 'darwin';
 
   return process.platform;
+}
+
+/**
+ * The architecture a target triple belongs to.
+ */
+function archOf(target) {
+  if (!target) {
+    return process.arch;
+  }
+
+  if (target.includes('aarch64') || target.includes('arm64')) return 'arm64';
+  if (target.includes('x86_64') || target.includes('x64')) return 'x64';
+  if (target.includes('i686') || target.includes('i586')) return 'ia32';
+  if (target.includes('arm')) return 'arm';
+
+  return process.arch;
+}
+
+/**
+ * Resolves the platform-specific binding filename.
+ */
+function bindingName(platform, arch) {
+  const prefix = BINDING_PREFIX[platform];
+
+  if (!prefix) {
+    fail(`Unsupported platform "${platform}".`);
+  }
+
+  return arch === PRIMARY_ARCH[platform] ? `${prefix}.node` : `${prefix}-${arch}.node`;
 }
 
 /**
  * The name of the library for a platform.
  */
 function libraryName(platform) {
-  if (LIBRARY_NAMES[platform]) {
-    return LIBRARY_NAMES[platform];
+  const name = LIBRARY_NAMES[platform];
+
+  if (!name) {
+    fail(`Unsupported platform "${platform}".`);
   }
 
-  return platform === 'win32' ? 'server.dll' : 'libserver.so';
+  return name;
 }
 
 function log(message) {
@@ -118,9 +189,11 @@ function findNativeBinary(target, platform) {
       ]
     : [
         path.join(projectRoot, 'target', profile),
-        path.join(projectRoot, 'target', `x86_64-pc-windows-msvc`, profile),
+        path.join(projectRoot, 'target', 'x86_64-pc-windows-msvc', profile),
+        path.join(projectRoot, 'target', 'aarch64-apple-darwin', profile),
         path.join(projectRoot, 'target', 'x86_64-apple-darwin', profile),
-        path.join(projectRoot, 'target', 'x86_64-unknown-linux-gnu', profile)
+        path.join(projectRoot, 'target', 'x86_64-unknown-linux-gnu', profile),
+        path.join(projectRoot, 'target', 'aarch64-unknown-linux-gnu', profile)
       ];
 
   return directories
@@ -129,19 +202,18 @@ function findNativeBinary(target, platform) {
 }
 
 /**
- * Copies the compiled library into `dist/index.node`.
+ * Atomically copies a file, replacing it safely even if it is locked by a running
+ * process on Windows.
  */
-function copyNativeBinary(binaryPath) {
-  const targetPath = path.join(distDir, 'index.node');
-
+function copyFileAtomic(source, destination) {
   try {
-    fs.copyFileSync(binaryPath, targetPath);
+    fs.copyFileSync(source, destination);
   } catch (err) {
     if (err.code === 'EBUSY' || err.code === 'EPERM') {
       // The previous module is still loaded by a running process: replace it anyway.
-      const backupPath = path.join(distDir, `index.node.${Date.now()}.old`);
-      fs.renameSync(targetPath, backupPath);
-      fs.copyFileSync(binaryPath, targetPath);
+      const backupPath = `${destination}.${Date.now()}.old`;
+      fs.renameSync(destination, backupPath);
+      fs.copyFileSync(source, destination);
       try {
         fs.unlinkSync(backupPath);
       } catch (_) {}
@@ -149,23 +221,33 @@ function copyNativeBinary(binaryPath) {
       throw err;
     }
   }
-
-  return targetPath;
 }
 
 /**
- * Removes leftovers of previous builds (stale `.old` binaries).
+ * Removes leftovers of previous builds and the old monolithic `index.node`,
+ * which cannot coexist with the platform-specific bindings.
  */
 function cleanStaleArtifacts() {
   if (!fs.existsSync(distDir)) return;
 
   for (const entry of fs.readdirSync(distDir)) {
-    if (/\.old$/.test(entry)) {
+    if (entry === 'index.node' || entry.endsWith('.old')) {
       try {
         fs.unlinkSync(path.join(distDir, entry));
       } catch (_) {}
     }
   }
+}
+
+/**
+ * Copies the compiled library into its platform-specific `.node` file.
+ */
+function copyNativeBinary(binaryPath, platform, arch) {
+  const targetPath = path.join(distDir, bindingName(platform, arch));
+
+  copyFileAtomic(binaryPath, targetPath);
+
+  return targetPath;
 }
 
 /**
@@ -194,36 +276,79 @@ function copyJavaScriptLayer() {
 /**
  * Verifies that the generated package is complete.
  */
-function verifyOutput() {
-  const required = ['index.node', 'index.js', 'http.js', 'errors.js', 'validation.js', 'index.d.ts'];
-  const missing = required.filter((file) => !fs.existsSync(path.join(distDir, file)));
+function verifyOutput(nativeFile) {
+  const leftovers = fs
+    .readdirSync(distDir)
+    .filter((file) => file === 'index.node' || file.endsWith('.old'));
+
+  if (leftovers.length > 0) {
+    fail(
+      `The build output contains stale artifacts: ${leftovers.join(', ')}. ` +
+        'Close any process using them and build again.'
+    );
+  }
+
+  const missing = REQUIRED_JS_FILES.filter((file) => !fs.existsSync(path.join(distDir, file)));
 
   if (missing.length > 0) {
-    fail(`The build output is incomplete, missing: ${missing.join(', ')}`);
+    fail(`The build output is incomplete, missing JavaScript files: ${missing.join(', ')}`);
   }
-}
 
-const target = requestedTarget();
-const platform = platformOf(target);
+  if (nativeFile) {
+    const nativePath = path.join(distDir, nativeFile);
 
-compileNativeModule(target);
+    if (!fs.existsSync(nativePath) || fs.statSync(nativePath).size === 0) {
+      fail(`The native binary "${nativeFile}" was not generated.`);
+    }
+  }
 
-const binaryPath = findNativeBinary(target, platform);
-if (!binaryPath) {
-  fail(
-    'Compiled native binary not found. ' +
-      `Check that the target "${target || process.platform}" is installed ` +
-      '(rustup target add <triple>) and that the build succeeded.'
-  );
+  const binaries = fs.readdirSync(distDir).filter((file) => file.endsWith('.node'));
+
+  if (binaries.length === 0) {
+    fail('The build output is incomplete: no .node binary found in dist.');
+  }
+
+  if (requireAllPlatforms) {
+    const unavailable = REQUIRED_PLATFORM_BINDINGS.filter((file) => !binaries.includes(file));
+
+    if (unavailable.length > 0) {
+      fail(
+        `The package is missing platform binaries: ${unavailable.join(', ')}. ` +
+          'Build them on their platforms (or download the CI artifacts) before packing.'
+      );
+    }
+  }
 }
 
 fs.mkdirSync(distDir, { recursive: true });
 cleanStaleArtifacts();
 
-const nativeTarget = copyNativeBinary(binaryPath);
+const target = requestedTarget();
+const platform = platformOf(target);
+const arch = archOf(target);
+
+let nativeTarget = null;
+
+if (!isJsOnly) {
+  compileNativeModule(target);
+
+  const binaryPath = findNativeBinary(target, platform);
+  if (!binaryPath) {
+    fail(
+      'Compiled native binary not found. ' +
+        `Check that the target "${target || process.platform}" is installed ` +
+        '(rustup target add <triple>) and that the build succeeded.'
+    );
+  }
+
+  nativeTarget = copyNativeBinary(binaryPath, platform, arch);
+  log(`✓ Native binary generated: ${path.relative(projectRoot, nativeTarget)}`);
+} else {
+  log('Assembling the JavaScript layer without compiling the native addon (--js-only)...');
+}
+
 const jsFiles = copyJavaScriptLayer();
 
-verifyOutput();
+verifyOutput(nativeTarget ? path.basename(nativeTarget) : null);
 
-log(`✓ Native binary generated successfully at: ${nativeTarget}`);
-log(`✓ JavaScript layer generated successfully at: ${distDir} (${jsFiles.join(', ')})`);
+log(`✓ JavaScript layer generated: ${path.relative(projectRoot, distDir)} (${jsFiles.join(', ')})`);
