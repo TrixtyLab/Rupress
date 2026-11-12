@@ -7,37 +7,46 @@ match the contract. The handler does not have to repeat the same checks on every
 
 ## The three sources
 
-| Key | Source | When it is validated |
-| --- | --- | --- |
-| `fields` | The request **body** | Only on `POST`, `PUT` and `PATCH` |
-| `query` | The **query string** | On every method |
-| `params` | The **route parameters** | On every method |
+| Key      | Source                   | When it is validated              |
+| -------- | ------------------------ | --------------------------------- |
+| `fields` | The request **body**     | Only on `POST`, `PUT` and `PATCH` |
+| `query`  | The **query string**     | On every method                   |
+| `params` | The **route parameters** | On every method                   |
 
 ```js
 await serve(3000, {
-  '/posts/:id': {
+  "/posts/:id": {
     // body (POST, PUT, PATCH)
     fields: {
       post: {
-        title: { type: 'string', required: true },
-        views: { type: 'integer', required: false, default: 0 }
-      }
+        title: { type: "string", required: true },
+        views: { type: "integer", required: false, default: 0 },
+      },
     },
 
     // query string (every method)
     query: {
-      page: { type: 'integer', required: false, default: 1 },
-      sort: { type: 'string', enum: ['asc', 'desc'], required: false, default: 'asc' }
+      page: { type: "integer", required: false, default: 1 },
+      sort: {
+        type: "string",
+        enum: ["asc", "desc"],
+        required: false,
+        default: "asc",
+      },
     },
 
     // route parameters (every method)
     params: {
-      id: { type: 'integer', required: true }
+      id: { type: "integer", required: true },
     },
 
     GET: ({ params, query }) => ({ postId: params.id, page: query.page }),
-    POST: ({ params, body }) => ({ saved: true, postId: params.id, content: body })
-  }
+    POST: ({ params, body }) => ({
+      saved: true,
+      postId: params.id,
+      content: body,
+    }),
+  },
 });
 ```
 
@@ -112,33 +121,33 @@ The default status of a route can be set with `validation`:
 
 ## The options of a field
 
-| Option | Type | Description |
-| --- | --- | --- |
-| `type` / `format` | `string` | `string`, `number`, `integer`, `boolean`, `array`, `object`, `email`, `url`, `uuid`, `date`. |
-| `required` | `boolean` | When `true`, the field is mandatory (`undefined`, `null` and `''` count as missing). |
-| `default` | `any` | Value applied when the field does not arrive. |
-| `status` | `number` | The HTTP status of the generated error (defaults to `422`). |
-| `message` | `string` | Message template; `{}` is replaced by the path of the field. |
-| `min` / `max` | `number` | Numeric range. |
-| `minLength` / `maxLength` | `number` | Length of the strings. |
-| `pattern` | `string` | Regular expression the string must match. |
-| `enum` | `array` | List of allowed values. |
-| `minItems` / `maxItems` | `number` | Number of elements of an array. |
+| Option                    | Type      | Description                                                                                  |
+| ------------------------- | --------- | -------------------------------------------------------------------------------------------- |
+| `type` / `format`         | `string`  | `string`, `number`, `integer`, `boolean`, `array`, `object`, `email`, `url`, `uuid`, `date`. |
+| `required`                | `boolean` | When `true`, the field is mandatory (`undefined`, `null` and `''` count as missing).         |
+| `default`                 | `any`     | Value applied when the field does not arrive.                                                |
+| `status`                  | `number`  | The HTTP status of the generated error (defaults to `422`).                                  |
+| `message`                 | `string`  | Message template; `{}` is replaced by the path of the field.                                 |
+| `min` / `max`             | `number`  | Numeric range.                                                                               |
+| `minLength` / `maxLength` | `number`  | Length of the strings.                                                                       |
+| `pattern`                 | `string`  | Regular expression the string must match.                                                    |
+| `enum`                    | `array`   | List of allowed values.                                                                      |
+| `minItems` / `maxItems`   | `number`  | Number of elements of an array.                                                              |
 
 ### Types
 
-| Type | Accepts |
-| --- | --- |
-| `string` | Any string. |
-| `number` | A finite number. |
-| `integer` | An integer. |
-| `boolean` | `true` or `false`. |
-| `array` | An array. |
-| `object` | An object (not an array). |
-| `email` | A string with an email format. |
-| `url` | A string with the `http` or `https` scheme. |
-| `uuid` | A UUID in the standard format. |
-| `date` | An ISO date (`2026-01-01` or `2026-01-01T10:00:00Z`). |
+| Type      | Accepts                                               |
+| --------- | ----------------------------------------------------- |
+| `string`  | Any string.                                           |
+| `number`  | A finite number.                                      |
+| `integer` | An integer.                                           |
+| `boolean` | `true` or `false`.                                    |
+| `array`   | An array.                                             |
+| `object`  | An object (not an array).                             |
+| `email`   | A string with an email format.                        |
+| `url`     | A string with the `http` or `https` scheme.           |
+| `uuid`    | A UUID in the standard format.                        |
+| `date`    | An ISO date (`2026-01-01` or `2026-01-01T10:00:00Z`). |
 
 ---
 
@@ -205,12 +214,16 @@ app.post('/users', ({ body }) => body, {
 The helpers are also available directly:
 
 ```js
-import { validateBody, validateRequest, collectFields } from 'rupress';
+import {
+  validateBody,
+  validateRequest,
+  collectFields,
+} from "@trixtylab/rupress";
 
-validateBody({ title: { type: 'string', required: true } }, { title: 'Hello' });
+validateBody({ title: { type: "string", required: true } }, { title: "Hello" });
 
 validateRequest(
   { fields: schema, query: querySchema },
-  { body, query, params }
+  { body, query, params },
 );
 ```

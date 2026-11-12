@@ -11,11 +11,11 @@ The package is published in **GitHub Packages**, so the registry has to be confi
 ```
 
 ```bash
-pnpm add @trixtylab/rupress
+pnpm add '@trixtylab/rupress'
 ```
 
 > GitHub Packages only accepts scoped packages and the scope must match the owner of the
-> repository, which is why the package is published as `@trixtylab/rupress`.
+> repository, which is why the package is published as `'@trixtylab/rupress'`.
 
 The published package ships the native addon already compiled for the usual platforms, so
 **Rust is not needed to use it**. If you want to compile it from source you need the stable
@@ -29,11 +29,11 @@ rustup target add x86_64-pc-windows-msvc   # or the one you need
 
 ```js
 // server.mjs
-import { serve } from 'rupress';
+import { serve } from "@trixtylab/rupress";
 
 const server = await serve(3000, {
-  'GET /': () => ({ status: 'online' }),
-  'GET /users/:id': ({ params }) => ({ userId: params.id })
+  "GET /": () => ({ status: "online" }),
+  "GET /users/:id": ({ params }) => ({ userId: params.id }),
 });
 
 console.log(`Listening on ${server.url}`);
@@ -65,12 +65,12 @@ my-api/
 
 ```js
 // server.mjs
-import { serve } from 'rupress';
-import { userRoutes } from './routes/users.mjs';
+import { serve } from "@trixtylab/rupress";
+import { userRoutes } from "./routes/users.mjs";
 
 await serve(3000, {
   ...userRoutes,
-  'GET /health': () => ({ ok: true })
+  "GET /health": () => ({ ok: true }),
 });
 ```
 
@@ -80,8 +80,8 @@ await serve(3000, {
 
 ```js
 await serve(3000, {
-  'GET /users': () => ({ users: [] }),
-  'POST /users': ({ body }) => ({ created: body })
+  "GET /users": () => ({ users: [] }),
+  "POST /users": ({ body }) => ({ created: body }),
 });
 ```
 
@@ -89,11 +89,11 @@ await serve(3000, {
 
 ```js
 await serve(3000, {
-  '/users/:id': {
+  "/users/:id": {
     GET: ({ params }) => ({ userId: params.id }),
     PUT: ({ params, body }) => ({ updated: params.id, body }),
-    DELETE: ({ params }) => ({ deleted: params.id })
-  }
+    DELETE: ({ params }) => ({ deleted: params.id }),
+  },
 });
 ```
 
@@ -101,14 +101,14 @@ await serve(3000, {
 
 ```js
 await serve(3000, {
-  '/users/:id': {
+  "/users/:id": {
     fields: {
-      name: { type: 'string', required: true },
-      email: { type: 'email', required: true }
+      name: { type: "string", required: true },
+      email: { type: "email", required: true },
     },
     GET: ({ params }) => ({ userId: params.id }),
-    POST: ({ body }) => ({ created: body })
-  }
+    POST: ({ body }) => ({ created: body }),
+  },
 });
 ```
 
@@ -141,7 +141,7 @@ Every handler receives a single object:
 ## Errors
 
 ```js
-import { HttpError, notFound } from 'rupress';
+import { HttpError, notFound } from '@trixtylab/rupress';
 
 'GET /users/:id': ({ params }) => {
   const user = findUser(params.id);
@@ -175,15 +175,15 @@ await serve(3000, {
   security: {
     auth: {
       apiKeys: {
-        'key-alice': { name: 'alice', permissions: ['posts:write'] }
-      }
-    }
+        "key-alice": { name: "alice", permissions: ["posts:write"] },
+      },
+    },
   },
 
-  '/posts': {
-    auth: { permissions: ['posts:write'] },
-    POST: ({ body, user }) => ({ created: body, by: user.name })
-  }
+  "/posts": {
+    auth: { permissions: ["posts:write"] },
+    POST: ({ body, user }) => ({ created: body, by: user.name }),
+  },
 });
 ```
 
@@ -195,14 +195,14 @@ The credentials are verified in Rust, without a round trip to JavaScript. See
 When you prefer registering the routes by hand:
 
 ```js
-import { App } from 'rupress';
+import { App } from "@trixtylab/rupress";
 
 const app = new App();
 
-app.get('/health', () => ({ ok: true }));
-app.post('/users', ({ body }) => ({ created: body }));
+app.get("/health", () => ({ ok: true }));
+app.post("/users", ({ body }) => ({ created: body }));
 
-const port = await app.listen(3000, '127.0.0.1');
+const port = await app.listen(3000, "127.0.0.1");
 console.log(`Listening on port ${port}`);
 ```
 

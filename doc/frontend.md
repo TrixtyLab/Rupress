@@ -8,14 +8,14 @@ rupress comes with everything needed to serve a modern frontend, both in **devel
 ## Production: static files and SPA fallback
 
 ```js
-import { serve } from 'rupress';
+import { serve } from "@trixtylab/rupress";
 
 await serve(3000, {
-  static: './dist',   // the Vite build
-  spa: true,          // the routes of the React router serve index.html
+  static: "./dist", // the Vite build
+  spa: true, // the routes of the React router serve index.html
   cache: { maxAge: 3600, immutableMaxAge: 31536000 },
 
-  'GET /api/users': () => ({ users: [] })
+  "GET /api/users": () => ({ users: [] }),
 });
 ```
 
@@ -32,7 +32,7 @@ resolves the path in the browser.
 The file can also be given explicitly:
 
 ```js
-spa: './dist/index.html'
+spa: "./dist/index.html";
 ```
 
 > The fallback only applies to `GET` and `HEAD`. A `POST` to an unknown path still answers
@@ -40,11 +40,11 @@ spa: './dist/index.html'
 
 ### The cache policy
 
-| File | `Cache-Control` |
-| --- | --- |
-| `index.html` | `no-cache` — the new version is always downloaded. |
-| Hashed assets (`assets/index-a1B2c3D4.js`) | `public, max-age=31536000, immutable`. |
-| Everything else | `public, max-age=3600` (configurable). |
+| File                                       | `Cache-Control`                                    |
+| ------------------------------------------ | -------------------------------------------------- |
+| `index.html`                               | `no-cache` — the new version is always downloaded. |
+| Hashed assets (`assets/index-a1B2c3D4.js`) | `public, max-age=31536000, immutable`.             |
+| Everything else                            | `public, max-age=3600` (configurable).             |
 
 The hash is detected in the style of **Vite/Rollup** (`name-hash.ext`) and of **webpack**
 (`name.hash.ext`).
@@ -61,10 +61,10 @@ cache: {
 ```js
 await serve(3000, {
   static: {
-    '/assets': './dist/assets',
-    '/images': './public/images'
+    "/assets": "./dist/assets",
+    "/images": "./public/images",
   },
-  spa: './dist/index.html'
+  spa: "./dist/index.html",
 });
 ```
 
@@ -75,13 +75,13 @@ await serve(3000, {
 ```js
 await serve(3000, {
   proxy: {
-    '/@vite': 'http://localhost:5173',
-    '/@id': 'http://localhost:5173',
-    '/src': 'http://localhost:5173',
-    '*': 'http://localhost:5173'   // everything else goes to the dev server
+    "/@vite": "http://localhost:5173",
+    "/@id": "http://localhost:5173",
+    "/src": "http://localhost:5173",
+    "*": "http://localhost:5173", // everything else goes to the dev server
   },
 
-  'GET /api/users': () => ({ users: [] })
+  "GET /api/users": () => ({ users: [] }),
 });
 ```
 
@@ -94,13 +94,13 @@ with the upstream, and the hop-by-hop headers (`Connection`, `Transfer-Encoding`
 
 ### The resolution order
 
-| Order | Source | Answered by |
-| --- | --- | --- |
-| First | Application routes | your handlers |
-| Second | Static files | the build folder |
-| Third | Proxy | the Vite dev server |
-| Fourth | SPA fallback | the index.html |
-| Last | Nothing | 404 |
+| Order  | Source             | Answered by         |
+| ------ | ------------------ | ------------------- |
+| First  | Application routes | your handlers       |
+| Second | Static files       | the build folder    |
+| Third  | Proxy              | the Vite dev server |
+| Fourth | SPA fallback       | the index.html      |
+| Last   | Nothing            | 404                 |
 
 The API routes always win, so the proxy never interferes with the backend.
 
@@ -114,9 +114,9 @@ The inverse setup also works, and it is the one Vite uses by default: the dev se
 export default {
   server: {
     proxy: {
-      '/api': 'http://localhost:3000'
-    }
-  }
+      "/api": "http://localhost:3000",
+    },
+  },
 };
 ```
 
@@ -140,9 +140,9 @@ do. When the upstream uses a private certificate, trust it explicitly:
 ```js
 await serve(3000, {
   security: {
-    tls: { ca: readFileSync('./ca.pem', 'utf8') }
+    tls: { ca: readFileSync("./ca.pem", "utf8") },
   },
-  proxy: { '*': 'https://internal.example.com' }
+  proxy: { "*": "https://internal.example.com" },
 });
 ```
 
@@ -150,14 +150,18 @@ For a local development server with a self signed certificate the verification c
 disabled (**development only**):
 
 ```js
-security: { tls: { insecure: true } }
+security: {
+  tls: {
+    insecure: true;
+  }
+}
 ```
 
 ---
 
 ## WebSocket: the Vite HMR
 
-The requests that ask for a protocol *upgrade* are **tunnelled** to the upstream, so the HMR
+The requests that ask for a protocol _upgrade_ are **tunnelled** to the upstream, so the HMR
 (Hot Module Replacement) works through the Rust server:
 
 ```
@@ -170,9 +174,9 @@ the connection behaves exactly as if the upstream had answered.
 ```js
 await serve(3000, {
   proxy: {
-    '/@vite': 'http://localhost:5173',   // includes the HMR WebSocket
-    '*': 'http://localhost:5173'
-  }
+    "/@vite": "http://localhost:5173", // includes the HMR WebSocket
+    "*": "http://localhost:5173",
+  },
 });
 ```
 
@@ -185,25 +189,25 @@ If the request is an upgrade but no proxy route handles it, the server answers
 
 ```js
 // server.mjs
-import { serve, HttpError } from 'rupress';
+import { serve, HttpError } from "@trixtylab/rupress";
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === "production";
 
 await serve(3000, {
   cors: true,
 
   // The API always has priority
-  'GET /api/products': ({ query }) => {
+  "GET /api/products": ({ query }) => {
     const page = Number(query.page ?? 1);
     return { products: [], page };
   },
 
-  'POST /api/products': ({ body }) => ({ created: body }),
+  "POST /api/products": ({ body }) => ({ created: body }),
 
   // The frontend
   ...(isProduction
-    ? { static: './dist', spa: true }
-    : { proxy: { '*': 'http://localhost:5173' } })
+    ? { static: "./dist", spa: true }
+    : { proxy: { "*": "http://localhost:5173" } }),
 });
 ```
 
@@ -216,20 +220,20 @@ serves the frontend and rupress only exposes the API.
 
 ```js
 // vite.config.js
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:3000'
-    }
+      "/api": "http://localhost:3000",
+    },
   },
   build: {
-    outDir: 'dist'
-  }
+    outDir: "dist",
+  },
 });
 ```
 

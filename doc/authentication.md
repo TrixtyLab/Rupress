@@ -13,13 +13,16 @@ await serve(3000, {
   security: {
     auth: {
       apiKeys: {
-        'key-alice': { name: 'alice', permissions: ['posts:read'] },
-        'key-admin': { name: 'admin', permissions: ['admin', 'posts:read'] }
-      }
-    }
+        "key-alice": { name: "alice", permissions: ["posts:read"] },
+        "key-admin": { name: "admin", permissions: ["admin", "posts:read"] },
+      },
+    },
   },
 
-  'GET /profile': ({ user }) => ({ name: user.name, permissions: user.permissions })
+  "GET /profile": ({ user }) => ({
+    name: user.name,
+    permissions: user.permissions,
+  }),
 });
 ```
 
@@ -68,11 +71,11 @@ await serve(3000, {
     auth: {
       jwt: {
         secret: process.env.JWT_SECRET,
-        issuer: 'https://auth.example.com',
-        audience: 'rupress'
-      }
-    }
-  }
+        issuer: "https://auth.example.com",
+        audience: "@trixtylab/rupress",
+      },
+    },
+  },
 });
 ```
 
@@ -92,9 +95,9 @@ The token is validated completely:
 
 The identity is taken from the claims:
 
-| Claim | Effect |
-| --- | --- |
-| `sub` | The name of the identity (`ctx.user.name`). |
+| Claim         | Effect                                                 |
+| ------------- | ------------------------------------------------------ |
+| `sub`         | The name of the identity (`ctx.user.name`).            |
 | `permissions` | The permissions of the identity (an array of strings). |
 
 ```json
@@ -123,10 +126,10 @@ A route declares the permissions it requires:
 }
 ```
 
-| Option | Meaning |
-| --- | --- |
-| `permissions` | The identity must have **all** of them. |
-| `anyOf` | The identity must have **at least one** of them. |
+| Option        | Meaning                                          |
+| ------------- | ------------------------------------------------ |
+| `permissions` | The identity must have **all** of them.          |
+| `anyOf`       | The identity must have **at least one** of them. |
 
 When the identity does not satisfy the requirements, the server answers `403 Forbidden`:
 
@@ -158,12 +161,12 @@ When the authentication layer is disabled, `ctx.user` is `null`.
 
 ## Errors
 
-| Situation | Status | Message |
-| --- | --- | --- |
-| No credentials | `401 Unauthorized` | `Authentication is required.` |
-| Unknown API key | `401 Unauthorized` | `The credential is not valid.` |
-| Invalid or expired token | `401 Unauthorized` | `The credential is not valid.` / `The credential has expired.` |
-| Missing permissions | `403 Forbidden` | `The identity does not have the permissions required by this route.` |
+| Situation                | Status             | Message                                                              |
+| ------------------------ | ------------------ | -------------------------------------------------------------------- |
+| No credentials           | `401 Unauthorized` | `Authentication is required.`                                        |
+| Unknown API key          | `401 Unauthorized` | `The credential is not valid.`                                       |
+| Invalid or expired token | `401 Unauthorized` | `The credential is not valid.` / `The credential has expired.`       |
+| Missing permissions      | `403 Forbidden`    | `The identity does not have the permissions required by this route.` |
 
 ---
 
@@ -175,8 +178,8 @@ same NAT do not share the quota:
 ```js
 await serve(3000, {
   security: {
-    rateLimit: { max: 100, windowSecs: 10, keyBy: 'x-api-key' }
-  }
+    rateLimit: { max: 100, windowSecs: 10, keyBy: "x-api-key" },
+  },
 });
 ```
 
@@ -199,8 +202,8 @@ never kept in memory and the size of the key is bounded no matter how long the h
 ## Imperative API
 
 ```js
-app.post('/users', ({ body, user }) => ({ created: body, by: user.name }), {
-  auth: { permissions: ['users:write'] }
+app.post("/users", ({ body, user }) => ({ created: body, by: user.name }), {
+  auth: { permissions: ["users:write"] },
 });
 ```
 

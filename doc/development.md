@@ -31,13 +31,13 @@ and RPC.
 
 ## Scripts
 
-| Script | Description |
-| --- | --- |
-| `pnpm build` | Compiles the native addon (debug profile) and generates `dist/`. |
+| Script               | Description                                                        |
+| -------------------- | ------------------------------------------------------------------ |
+| `pnpm build`         | Compiles the native addon (debug profile) and generates `dist/`.   |
 | `pnpm build:release` | Compiles the native addon (release profile) and generates `dist/`. |
-| `pnpm build:js` | Copies the JavaScript layer into `dist` without compiling. |
-| `pnpm dev` | Starts the example server. |
-| `pnpm test` | Runs the whole test suite. |
+| `pnpm build:js`      | Copies the JavaScript layer into `dist` without compiling.         |
+| `pnpm dev`           | Starts the example server.                                         |
+| `pnpm test`          | Runs the whole test suite.                                         |
 
 ### Cross compilation
 
@@ -52,14 +52,14 @@ node ./scripts/build.js --release --target x86_64-apple-darwin
 The name of the library is resolved from the target (`server.dll`, `libserver.so`,
 `libserver.dylib`) and the result is copied to a platform-specific binding:
 
-| Platform | Architecture | Output |
-| --- | --- | --- |
-| Windows | x64 | `dist/win.node` |
-| Windows | arm64 | `dist/win-arm64.node` |
-| Linux | x64 | `dist/lin.node` |
-| Linux | arm64 | `dist/lin-arm64.node` |
-| macOS | arm64 | `dist/mac.node` |
-| macOS | x64 | `dist/mac-x64.node` |
+| Platform | Architecture | Output                |
+| -------- | ------------ | --------------------- |
+| Windows  | x64          | `dist/win.node`       |
+| Windows  | arm64        | `dist/win-arm64.node` |
+| Linux    | x64          | `dist/lin.node`       |
+| Linux    | arm64        | `dist/lin-arm64.node` |
+| macOS    | arm64        | `dist/mac.node`       |
+| macOS    | x64          | `dist/mac-x64.node`   |
 
 The JavaScript loader (`src/js/index.js`) resolves the file that matches
 `process.platform` and `process.arch` at runtime, so a single package can contain every
@@ -87,17 +87,17 @@ Suites: 9/9 passed
 Tests:  375 passed, 0 failed
 ```
 
-| File | Covers |
-| --- | --- |
-| `test/api.test.js` | The public exports, the hierarchy of the status classes, the metadata of the package, the build output, the type declarations and the workflows. |
-| `test/config.test.js` | The detection of the misconfigurations: invalid ports, invalid routes, duplicated routes, missing directories, invalid schemas, invalid upstreams and the warnings of the configuration. |
-| `test/protocol.test.js` | The HTTP protocol: the methods, CORS, the bodies, the chunked encoding, `100-continue`, the MIME types, the malformed requests and the limits of the connection. |
-| `test/auth.test.js` | The complete matrix of the authentication: API keys, JWT (including the `alg: none` attack, the tampered payload and the expired tokens), the permissions of the routes and the anonymous access. |
-| `test/validation.test.js` | The complete matrix of the declarative validation: every type, the required fields, the defaults, the constraints, the nested schemas, the custom messages and the delegated statuses. |
-| `test/http_statuses.test.js` | The five HTTP categories, the registry, the helpers and the routing with parameters. |
-| `test/regressions.test.js` | The regressions: the decoding of the query and the parameters, the static files and the traversal blocking, the normalization of the headers, the invalid status, the ephemeral port, the rate limit and the startup validations. |
-| `test/frontend.test.js` | The SPA fallback, the cache policy, the proxy to a dev server and the WebSocket tunnel. |
-| `test/security.test.js` | The API keys, the route permissions, the rate limit per key and the HTTPS proxy. |
+| File                         | Covers                                                                                                                                                                                                                            |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test/api.test.js`           | The public exports, the hierarchy of the status classes, the metadata of the package, the build output, the type declarations and the workflows.                                                                                  |
+| `test/config.test.js`        | The detection of the misconfigurations: invalid ports, invalid routes, duplicated routes, missing directories, invalid schemas, invalid upstreams and the warnings of the configuration.                                          |
+| `test/protocol.test.js`      | The HTTP protocol: the methods, CORS, the bodies, the chunked encoding, `100-continue`, the MIME types, the malformed requests and the limits of the connection.                                                                  |
+| `test/auth.test.js`          | The complete matrix of the authentication: API keys, JWT (including the `alg: none` attack, the tampered payload and the expired tokens), the permissions of the routes and the anonymous access.                                 |
+| `test/validation.test.js`    | The complete matrix of the declarative validation: every type, the required fields, the defaults, the constraints, the nested schemas, the custom messages and the delegated statuses.                                            |
+| `test/http_statuses.test.js` | The five HTTP categories, the registry, the helpers and the routing with parameters.                                                                                                                                              |
+| `test/regressions.test.js`   | The regressions: the decoding of the query and the parameters, the static files and the traversal blocking, the normalization of the headers, the invalid status, the ephemeral port, the rate limit and the startup validations. |
+| `test/frontend.test.js`      | The SPA fallback, the cache policy, the proxy to a dev server and the WebSocket tunnel.                                                                                                                                           |
+| `test/security.test.js`      | The API keys, the route permissions, the rate limit per key and the HTTPS proxy.                                                                                                                                                  |
 
 Every suite starts real servers on **ephemeral ports** and uses `fetch` and `node:http` as
 clients, so they verify the observable behaviour and not the internal implementation.
@@ -137,8 +137,8 @@ OPENSSL_PATH=/usr/bin/openssl pnpm test
 
 ## Style
 
-- **JavaScript**: two spaces, semicolons, single quotes. The comments explain the *why*, not the
-  *what*.
+- **JavaScript**: two spaces, semicolons, single quotes. The comments explain the _why_, not the
+  _what_.
 - **Rust**: the standard `cargo fmt` format.
 - The error messages and the comments of the code are written in English, like the
   documentation.
@@ -171,7 +171,7 @@ attestation. The registry, the scope and the permissions are declared in `packag
 (`publishConfig`) and in the workflow.
 
 > GitHub Packages only accepts scoped packages, so the name of the package is
-> `@trixtylab/rupress` and the scope must match the owner of the repository.
+> `'@trixtylab/rupress'` and the scope must match the owner of the repository.
 
 To publish a tarball locally, all the platform binaries must be present in `dist/`:
 
