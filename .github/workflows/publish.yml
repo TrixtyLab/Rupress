@@ -1,0 +1,59 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Distribution tag (defaults to latest)'
+        required: false
+        default: latest
+
+# The packages of the repository need write access, and the provenance
+# attestation needs the identity of the workflow.
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish to GitHub Packages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.18.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+
+      - name: Install the dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build the native addon (release)
+        run: pnpm build:release
+
+      - name: Run the tests
+        run: pnpm test
+        env:
+          OPENSSL_PATH: /usr/bin/openssl
+
+      - name: Publish
+        run: pnpm publish --provenance --no-git-checks --tag "${{ github.event.inputs.tag || 'latest' }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

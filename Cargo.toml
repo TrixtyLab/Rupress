@@ -1,0 +1,14 @@
+[workspace]
+members = [
+    "src/server"
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+authors = ["JmaxDev"]
+license = "SEE LICENSE IN LICENSE.md"
+homepage = "https://github.com/TrixtyLab/Rupress#readme"
+repository = "https://github.com/TrixtyLab/Rupress"
+description = "rupress: an HTTP server written in Rust (Tokio + Hyper) with a declarative JavaScript API"
+version = "0.0.1"
