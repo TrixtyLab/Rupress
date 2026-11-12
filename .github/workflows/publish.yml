@@ -1,13 +1,10 @@
 name: Publish
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Distribution tag (defaults to latest)'
+        description: "Distribution tag (defaults to latest)"
         required: false
         default: latest
 
